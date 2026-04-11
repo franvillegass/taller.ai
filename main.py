@@ -7,7 +7,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-
+import requests
 client = Groq(api_key="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")
 
 instrucciones_excel = """
@@ -27,11 +27,13 @@ Structure:
 
 Rules:
 - No explanations, no markdown, no extra text
-- columnas y datos deben coincidir en cantidad
-- Las descripciones deben ser detalladas, específicas y distintas entre sí
-- Los datos deben ser realistas y coherentes con el contexto
-- Nunca repitas el mismo valor en una columna de descripción
-- El estilo debe ser coherente con el tema del Excel pedido
+- columnas y datos must match in quantity
+- Descriptions must be detailed, specific and distinct from each other
+- Data must be realistic and coherent with the context
+- Never repeat the same value in a description column
+- Style must be coherent with the requested Excel theme
+- All text content (column names, data) must be written in Spanish
+- If a column contains prices or monetary values, set the value to ""
 """
 
 instrucciones_word = """
@@ -39,21 +41,43 @@ Respond ONLY with valid JSON.
 
 Structure:
 {
-  "titulo": "Título del documento",
+  "titulo": "Document title in Spanish",
   "terminos": [
     {
-      "nombre": "Nombre del concepto",
-      "definicion": "Definición detallada del concepto.",
-      "palabras_clave": ["palabra1", "palabra2"]
+      "nombre": "Concept name in Spanish",
+      "definicion": "Detailed definition in Spanish.",
+      "palabras_clave": ["word1", "word2"]
     }
   ]
 }
 
 Rules:
 - No explanations, no markdown, no extra text
-- Las definiciones deben ser claras, completas y académicas
-- palabras_clave son los términos más importantes dentro de la definición (2-4 por concepto)
-- Nunca repitas definiciones
+- Definitions must be clear, complete and academic, written in Spanish
+- palabras_clave are the most important terms within the definition (2-4 per concept)
+- Never repeat definitions
+"""
+
+instrucciones_word = """
+Respond ONLY with valid JSON.
+
+Structure:
+{
+  "titulo": "Document title in Spanish",
+  "terminos": [
+    {
+      "nombre": "Concept name in Spanish",
+      "definicion": "Detailed definition in Spanish.",
+      "palabras_clave": ["word1", "word2"]
+    }
+  ]
+}
+
+Rules:
+- No explanations, no markdown, no extra text
+- Definitions must be clear, complete and academic, written in Spanish
+- palabras_clave are the most important terms within the definition (2-4 per concept)
+- Never repeat definitions
 """
 
 
@@ -66,6 +90,45 @@ def iu_basica():
     return prompt, seleccion
 
 
+def mejorar_prompt(prompt_usuario, tipo):
+    tipo_str = "Excel con datos tabulares" if tipo == "1" else "Word con definiciones"
+
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": f"""
+You are an assistant that improves prompts for generating {tipo_str}.
+Take the user input and rewrite it clearly, specifically and in detail.
+Add missing context, specify number of columns/terms if not mentioned.
+Always request detailed descriptions regardless of what the user says.
+The final output (Excel/Word content) must be in Spanish.
+Return ONLY the improved prompt, no explanations or comments.
+"""},
+            {"role": "user", "content": prompt_usuario}
+        ],
+        temperature=0.3
+    )
+    return completion.choices[0].message.content
+
+def obtener_precios_meli(prompt_original):
+    # Usamos el prompt original del usuario, no el mejorado
+    # Es corto y tiene exactamente lo que necesitamos
+    palabras = [p.strip(",.") for p in prompt_original.split() if len(p) > 3]
+    
+    resultados = []
+    for termino in palabras:
+        try:
+            url = f"https://api.mercadolibre.com/sites/MLA/search?q=yerba+{termino}&limit=1"
+            r = requests.get(url, timeout=5)
+            data = r.json()
+            if data["results"]:
+                item = data["results"][0]
+                resultados.append(f"{item['title']}: ${item['price']}")
+        except Exception:
+            pass
+
+    return "\n".join(resultados) if resultados else "No se encontraron precios."
+
 def generacion_json(prompt, instrucciones):
     completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -74,24 +137,6 @@ def generacion_json(prompt, instrucciones):
             {"role": "user", "content": prompt}
         ],
         temperature=0
-    )
-    return completion.choices[0].message.content
-
-def mejorar_prompt(prompt_usuario, tipo):
-    tipo_str = "Excel con datos tabulares" if tipo == "1" else "Word con definiciones"
-    
-    completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": f"""
-Sos un asistente que mejora prompts para generación de {tipo_str}.
-Tomá el input del usuario y reescribilo de forma clara, específica y detallada.
-Agregá contexto que falte, especificá cantidad de columnas/términos si no se mencionó, y dejalo listo para que otro modelo lo entienda perfectamente.
-Devolvé SOLO el prompt mejorado, sin explicaciones ni comentarios.
-"""},
-            {"role": "user", "content": prompt_usuario}
-        ],
-        temperature=0.3
     )
     return completion.choices[0].message.content
 
@@ -215,16 +260,18 @@ def generar_word(data, output_path):
     print("Word creado")
 
 
+# MAIN
 prompt, seleccion = iu_basica()
 
 prompt_mejorado = mejorar_prompt(prompt, seleccion)
 print("PROMPT MEJORADO:", prompt_mejorado)
 print("=" * 50)
 
+
 if seleccion == "1":
-    contenido = generacion_json(prompt_mejorado, instrucciones_excel)
+    contenido = generacion_json(f"{prompt_mejorado}", instrucciones_excel)
 else:
-    contenido = generacion_json(prompt_mejorado, instrucciones_word)
+    contenido = generacion_json(f"{prompt_mejorado}", instrucciones_word)
 
 print("RESPUESTA CRUDA:")
 print(contenido)
