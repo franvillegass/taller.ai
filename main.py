@@ -8,7 +8,7 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-client = Groq(api_key="<REDACTED>")
+client = Groq(api_key="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")
 
 instrucciones_excel = """
 Respond ONLY with valid JSON.
@@ -77,6 +77,23 @@ def generacion_json(prompt, instrucciones):
     )
     return completion.choices[0].message.content
 
+def mejorar_prompt(prompt_usuario, tipo):
+    tipo_str = "Excel con datos tabulares" if tipo == "1" else "Word con definiciones"
+    
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": f"""
+Sos un asistente que mejora prompts para generación de {tipo_str}.
+Tomá el input del usuario y reescribilo de forma clara, específica y detallada.
+Agregá contexto que falte, especificá cantidad de columnas/términos si no se mencionó, y dejalo listo para que otro modelo lo entienda perfectamente.
+Devolvé SOLO el prompt mejorado, sin explicaciones ni comentarios.
+"""},
+            {"role": "user", "content": prompt_usuario}
+        ],
+        temperature=0.3
+    )
+    return completion.choices[0].message.content
 
 def parsear_json(texto):
     try:
@@ -198,13 +215,16 @@ def generar_word(data, output_path):
     print("Word creado")
 
 
-# MAIN
 prompt, seleccion = iu_basica()
 
+prompt_mejorado = mejorar_prompt(prompt, seleccion)
+print("PROMPT MEJORADO:", prompt_mejorado)
+print("=" * 50)
+
 if seleccion == "1":
-    contenido = generacion_json(prompt, instrucciones_excel)
+    contenido = generacion_json(prompt_mejorado, instrucciones_excel)
 else:
-    contenido = generacion_json(prompt, instrucciones_word)
+    contenido = generacion_json(prompt_mejorado, instrucciones_word)
 
 print("RESPUESTA CRUDA:")
 print(contenido)
@@ -213,6 +233,7 @@ print("=" * 50)
 data = parsear_json(contenido)
 if data is None:
     print("No se pudo extraer JSON válido")
+    input("Presioná Enter para cerrar...")
     exit()
 
 if seleccion == "1":
