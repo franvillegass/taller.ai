@@ -1,12 +1,12 @@
 import json
 import re
-import subprocess
-import tempfile
 import pandas as pd
 from groq import Groq
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-import os
+from docx import Document
+from docx.shared import Pt, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 client = Groq(api_key="<REDACTED>")
 
@@ -83,21 +83,18 @@ def parsear_json(texto):
         return json.loads(texto)
     except json.JSONDecodeError:
         pass
-
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", texto, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1))
         except json.JSONDecodeError:
             pass
-
     match = re.search(r"\{.*\}", texto, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(0))
         except json.JSONDecodeError:
             pass
-
     return None
 
 
@@ -134,121 +131,72 @@ def formatear_excel(path, estilo):
     wb.save(path)
 
 
-JS_WORD = r"""
-const { Document, Packer, Paragraph, TextRun, AlignmentType, UnderlineType } = require('docx');
-const fs = require('fs');
-
-const input = JSON.parse(process.argv[2]);
-const outputPath = process.argv[3];
-const titulo = input.titulo;
-const terminos = input.terminos;
-
-const children = [];
-
-children.push(
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 600 },
-    children: [
-      new TextRun({
-        text: titulo,
-        bold: true,
-        size: 48,
-        font: "Arial"
-      })
-    ]
-  })
-);
-
-for (const t of terminos) {
-  const palabrasClave = t.palabras_clave || [];
-  const definicion = t.definicion;
-  const runs = [];
-
-  runs.push(new TextRun({
-    text: t.nombre + ": ",
-    bold: true,
-    size: 24,
-    font: "Arial"
-  }));
-
-  let restante = definicion;
-  while (restante.length > 0) {
-    let primerIdx = restante.length;
-    let primerPalabra = null;
-
-    for (const pk of palabrasClave) {
-      const idx = restante.toLowerCase().indexOf(pk.toLowerCase());
-      if (idx !== -1 && idx < primerIdx) {
-        primerIdx = idx;
-        primerPalabra = pk;
-      }
-    }
-
-    if (primerPalabra === null) {
-      runs.push(new TextRun({ text: restante, size: 24, font: "Arial" }));
-      break;
-    } else {
-      if (primerIdx > 0) {
-        runs.push(new TextRun({ text: restante.slice(0, primerIdx), size: 24, font: "Arial" }));
-      }
-      runs.push(new TextRun({
-        text: restante.slice(primerIdx, primerIdx + primerPalabra.length),
-        size: 24,
-        font: "Arial",
-        underline: { type: UnderlineType.SINGLE }
-      }));
-      restante = restante.slice(primerIdx + primerPalabra.length);
-    }
-  }
-
-  children.push(
-    new Paragraph({
-      spacing: { before: 300, after: 300 },
-      children: runs
-    })
-  );
-}
-
-const doc = new Document({
-  sections: [{
-    properties: {
-      page: {
-        size: { width: 11906, height: 16838 },
-        margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
-      }
-    },
-    children
-  }]
-});
-
-Packer.toBuffer(doc).then(buffer => {
-  fs.writeFileSync(outputPath, buffer);
-  console.log("Word creado");
-});
-"""
-
-
 def generar_word(data, output_path):
     titulo = data.get("titulo", "Documento")
     terminos = data.get("terminos", [])
-    payload = json.dumps({"titulo": titulo, "terminos": terminos}, ensure_ascii=False)
 
-    # Guardar el JS en la carpeta del proyecto, no en Temp
-    js_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_word_gen.js")
-    with open(js_path, "w", encoding="utf-8") as f:
-        f.write(JS_WORD)
+    doc = Document()
 
-    result = subprocess.run(
-        ["node", js_path, payload, output_path],
-        capture_output=True, text=True,
-        cwd=os.path.dirname(os.path.abspath(__file__))  # ejecutar desde la carpeta del proyecto
-    )
+    for section in doc.sections:
+        section.top_margin = Cm(2.5)
+        section.bottom_margin = Cm(2.5)
+        section.left_margin = Cm(3)
+        section.right_margin = Cm(3)
 
-    if result.returncode != 0:
-        print("Error al generar Word:", result.stderr)
-    else:
-        print(result.stdout.strip())
+    titulo_par = doc.add_paragraph()
+    titulo_par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    titulo_par.paragraph_format.space_after = Pt(24)
+    run_titulo = titulo_par.add_run(titulo)
+    run_titulo.bold = True
+    run_titulo.font.size = Pt(24)
+    run_titulo.font.name = "Arial"
+
+    for t in terminos:
+        nombre = t.get("nombre", "")
+        definicion = t.get("definicion", "")
+        palabras_clave = [pk.lower() for pk in t.get("palabras_clave", [])]
+
+        par = doc.add_paragraph()
+        par.paragraph_format.space_before = Pt(10)
+        par.paragraph_format.space_after = Pt(10)
+
+        run_nombre = par.add_run(nombre + ": ")
+        run_nombre.bold = True
+        run_nombre.font.size = Pt(12)
+        run_nombre.font.name = "Arial"
+
+        restante = definicion
+        while restante:
+            primer_idx = len(restante)
+            primer_palabra = None
+
+            for pk in palabras_clave:
+                idx = restante.lower().find(pk)
+                if idx != -1 and idx < primer_idx:
+                    primer_idx = idx
+                    primer_palabra = pk
+
+            if primer_palabra is None:
+                run = par.add_run(restante)
+                run.font.size = Pt(12)
+                run.font.name = "Arial"
+                break
+            else:
+                if primer_idx > 0:
+                    run = par.add_run(restante[:primer_idx])
+                    run.font.size = Pt(12)
+                    run.font.name = "Arial"
+
+                run_sub = par.add_run(restante[primer_idx:primer_idx + len(primer_palabra)])
+                run_sub.underline = True
+                run_sub.font.size = Pt(12)
+                run_sub.font.name = "Arial"
+
+                restante = restante[primer_idx + len(primer_palabra):]
+
+    doc.save(output_path)
+    print("Word creado")
+
 
 # MAIN
 prompt, seleccion = iu_basica()
@@ -282,3 +230,5 @@ else:
         generar_word(data, "archivo.docx")
     except Exception as e:
         print("Error:", e)
+
+input("Presioná Enter para cerrar...")
