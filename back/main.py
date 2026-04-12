@@ -1,6 +1,7 @@
-from back.ai import mejorar_prompt, buscar_datos_web, generacion_json
+from back.ai import mejorar_prompt, generacion_json
 from front.iu_consola import iu_basica, post_generacion
 from back.config import instrucciones_excel, instrucciones_word
+from back.data import buscar_datos_web
 
 # MAIN
 prompt, seleccion = iu_basica()
