@@ -8,7 +8,10 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import requests
-client = Groq(api_key="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")
+import os
+from ddgs import DDGS
+
+client = Groq(api_key="is secret brouuu")
 
 instrucciones_excel = """
 Respond ONLY with valid JSON.
@@ -26,6 +29,7 @@ Structure:
 }
 
 Rules:
+- don't make up or say anything that isn't proven
 - No explanations, no markdown, no extra text
 - columnas y datos must match in quantity
 - Descriptions must be detailed, specific and distinct from each other
@@ -56,6 +60,7 @@ Rules:
 - Definitions must be clear, complete and academic, written in Spanish
 - palabras_clave are the most important terms within the definition (2-4 per concept)
 - Never repeat definitions
+- don't make up or say anything that isn't proven
 """
 
 instrucciones_word = """
@@ -74,6 +79,7 @@ Structure:
 }
 
 Rules:
+- don't make up or say anything that isn't proven
 - No explanations, no markdown, no extra text
 - Definitions must be clear, complete and academic, written in Spanish
 - palabras_clave are the most important terms within the definition (2-4 per concept)
@@ -131,7 +137,7 @@ def obtener_precios_meli(prompt_original):
 
 def generacion_json(prompt, instrucciones):
     completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b", # otra opcion valida es llama-3.3-70b-versatile otro es openai/gpt-oss-120b otra es groq/compound 
         messages=[
             {"role": "system", "content": instrucciones},
             {"role": "user", "content": prompt}
@@ -159,6 +165,29 @@ def parsear_json(texto):
             pass
     return None
 
+
+
+
+def buscar_datos_web(prompt_original):
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "Extract ONLY the product or brand names from the text. Return them separated by commas, nothing else. Example output: taragui, rosamonte, cbse"},
+            {"role": "user", "content": prompt_original}
+        ],
+        temperature=0,
+        max_tokens=30
+    )
+    keywords = completion.choices[0].message.content.strip()
+    print("KEYWORDS:", keywords)
+
+    resultados = []
+    for kw in [k.strip() for k in keywords.split(",")]:
+        results = DDGS().text(f"{kw} yerba mate Argentina", max_results=2)
+        for r in results:
+            resultados.append(r["body"])
+
+    return "\n".join(resultados[:6]) if resultados else "No se encontraron datos."
 
 def formatear_excel(path, estilo):
     wb = load_workbook(path)
@@ -267,11 +296,15 @@ prompt_mejorado = mejorar_prompt(prompt, seleccion)
 print("PROMPT MEJORADO:", prompt_mejorado)
 print("=" * 50)
 
+print("Buscando datos en la web...")
+datos_web = buscar_datos_web(prompt)
+print("DATOS WEB:", datos_web)
+print("=" * 50)
 
 if seleccion == "1":
-    contenido = generacion_json(f"{prompt_mejorado}", instrucciones_excel)
+    contenido = generacion_json(f"{prompt_mejorado}\n\nReal data found:\n{datos_web}", instrucciones_excel)
 else:
-    contenido = generacion_json(f"{prompt_mejorado}", instrucciones_word)
+    contenido = generacion_json(f"{prompt_mejorado}\n\nReal data found:\n{datos_web}", instrucciones_word)
 
 print("RESPUESTA CRUDA:")
 print(contenido)
