@@ -11,7 +11,7 @@ import requests
 import os
 from ddgs import DDGS
 
-client = Groq(api_key="dont see it")
+client = Groq(api_key="dont see brouououou")
 
 instrucciones_excel = """
 Respond ONLY with valid JSON.
@@ -29,6 +29,13 @@ Structure:
 }
 
 Rules:
+- Only include "grafico" field if the user explicitly asks for a chart
+- "grafico" types: "bar", "line", "pie"
+- "columna_x" and "columna_y" must match exact column names in "columnas"
+- If a calculated column is needed, use EXACTLY these names: "Total", "Subtotal", "Promedio", "Cantidad"
+- "Total" = price × quantity
+- "Subtotal" = same as Total before taxes
+- "Promedio" = average of a numeric column
 - You MUST use the real data provided under "Real data found" as the primary source. Never invent information that contradicts it.
 - don't make up or say anything that isn't proven
 - No explanations, no markdown, no extra text
@@ -38,7 +45,7 @@ Rules:
 - Never repeat the same value in a description column
 - Style must be coherent with the requested Excel theme
 - All text content (column names, data) must be written in Spanish
-- If a column contains prices or monetary values, set the value to ""
+- NEVER fill price or monetary columns with values, always set them to 0. This is mandatory.
 """
 
 instrucciones_word = """
@@ -64,30 +71,6 @@ Rules:
 - Never repeat definitions
 - don't make up or say anything that isn't proven
 """
-
-instrucciones_word = """
-Respond ONLY with valid JSON.
-
-Structure:
-{
-  "titulo": "Document title in Spanish",
-  "terminos": [
-    {
-      "nombre": "Concept name in Spanish",
-      "definicion": "Detailed definition in Spanish.",
-      "palabras_clave": ["word1", "word2"]
-    }
-  ]
-}
-
-Rules:
-- don't make up or say anything that isn't proven
-- No explanations, no markdown, no extra text
-- Definitions must be clear, complete and academic, written in Spanish
-- palabras_clave are the most important terms within the definition (2-4 per concept)
-- Never repeat definitions
-"""
-
 
 def iu_basica():
     seleccion = input("Introduzca 1 para generar un Excel y 2 para un Word: ")
@@ -221,8 +204,55 @@ def formatear_excel(path, estilo):
         for cell in row:
             cell.border = border
 
+    aplicar_formulas(ws)
+    wb.save(path)
     wb.save(path)
 
+def aplicar_formulas(ws):
+    headers = [cell.value for cell in ws[1]]
+
+    def buscar_col(keywords):
+        for i, h in enumerate(headers):
+            if h and any(k.lower() in h.lower() for k in keywords):
+                return i + 1
+        return None
+
+    col_total = buscar_col(["total", "subtotal"])
+    col_precio = buscar_col(["precio", "price", "unitario"])
+    col_cantidad = buscar_col(["cantidad", "quantity", "vendida"])
+    col_promedio = buscar_col(["promedio", "average"])
+
+    ultima_fila = ws.max_row
+
+    # Fórmula Total = Precio * Cantidad por fila
+    for row in range(2, ultima_fila + 1):
+        if col_total and col_precio and col_cantidad:
+            precio_cell = ws.cell(row=row, column=col_precio).coordinate
+            cantidad_cell = ws.cell(row=row, column=col_cantidad).coordinate
+            ws.cell(row=row, column=col_total).value = f"={precio_cell}*{cantidad_cell}"
+
+    # Fila de totales al final
+    fila_suma = ultima_fila + 2  # deja una fila vacía de separación
+
+    if col_total:
+        col_total_letra = ws.cell(row=2, column=col_total).column_letter
+        ws.cell(row=fila_suma, column=col_total).value = f"=SUM({col_total_letra}2:{col_total_letra}{ultima_fila})"
+        ws.cell(row=fila_suma, column=col_total - 1).value = "TOTAL"
+
+    if col_cantidad:
+        col_cantidad_letra = ws.cell(row=2, column=col_cantidad).column_letter
+        ws.cell(row=fila_suma, column=col_cantidad).value = f"=SUM({col_cantidad_letra}2:{col_cantidad_letra}{ultima_fila})"
+
+    if col_promedio:
+        col_promedio_letra = ws.cell(row=2, column=col_promedio).column_letter
+        ws.cell(row=fila_suma, column=col_promedio).value = f"=AVERAGE({col_promedio_letra}2:{col_promedio_letra}{ultima_fila})"
+        ws.cell(row=fila_suma, column=col_promedio - 1).value = "PROMEDIO"
+
+    # Estilo de la fila de totales
+    from openpyxl.styles import Font
+    for col in range(1, ws.max_column + 1):
+        cell = ws.cell(row=fila_suma, column=col)
+        cell.font = Font(bold=True, size=11)
 
 def generar_word(data, output_path):
     titulo = data.get("titulo", "Documento")
@@ -320,18 +350,22 @@ if data is None:
 
 if seleccion == "1":
     try:
-        path = "archivo.xlsx"
+        nombre = input("¿Qué nombre le ponés al archivo Excel? (sin extensión): ")
+        os.makedirs("excels", exist_ok=True)
+        path = f"excels/{nombre}.xlsx"
         df = pd.DataFrame(data["datos"], columns=data["columnas"])
         df.to_excel(path, index=False)
         estilo = data.get("estilo", {})
         formatear_excel(path, estilo)
-        print("Excel creado y formateado")
+        print(f"Excel creado: {path}")
+        print("NOTA, MUY IMPORTANTE POR FAVOR LEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER: holaaa soy fran porfa porfa revisa lo que haya generado  porque se puede equivocar, el modulo con el modelo de ia que busca la info esta medio gaga aveces, gracias x usar:D ")
     except Exception as e:
         print("Error:", e)
 else:
     try:
-        generar_word(data, "archivo.docx")
+        nombre = input("¿Qué nombre le ponés al archivo Word? (sin extensión): ")
+        os.makedirs("words", exist_ok=True)
+        path = f"words/{nombre}.docx"
+        generar_word(data, path)
     except Exception as e:
         print("Error:", e)
-
-input("Presioná Enter para cerrar...")
