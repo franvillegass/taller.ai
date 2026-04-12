@@ -11,7 +11,7 @@ import requests
 import os
 from ddgs import DDGS
 
-client = Groq(api_key="is secret brouuu")
+client = Groq(api_key="dont see it")
 
 instrucciones_excel = """
 Respond ONLY with valid JSON.
@@ -29,6 +29,7 @@ Structure:
 }
 
 Rules:
+- You MUST use the real data provided under "Real data found" as the primary source. Never invent information that contradicts it.
 - don't make up or say anything that isn't proven
 - No explanations, no markdown, no extra text
 - columnas y datos must match in quantity
@@ -56,6 +57,7 @@ Structure:
 }
 
 Rules:
+- You MUST use the real data provided under "Real data found" as the primary source. Never invent information that contradicts it.
 - No explanations, no markdown, no extra text
 - Definitions must be clear, complete and academic, written in Spanish
 - palabras_clave are the most important terms within the definition (2-4 per concept)
