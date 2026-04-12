@@ -75,3 +75,14 @@ def buscar_datos_web(prompt_original):
             resultados.append(r["body"])
 
     return "\n".join(resultados[:6]) if resultados else "No se encontraron datos."
+
+def editar_json(json_anterior, pedido_usuario, instrucciones):
+    completion = client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[
+            {"role": "system", "content": instrucciones},
+            {"role": "user", "content": f"Este es el documento actual:\n{json_anterior}\n\nModificación pedida:\n{pedido_usuario}"}
+        ],
+        temperature=0
+    )
+    return completion.choices[0].message.content
