@@ -405,3 +405,10 @@ dist/
 *.exe
 archivo.xlsx
 archivo.xlsx
+back/__pycache__/ai.cpython-313.pyc
+back/__pycache__/config.cpython-313.pyc
+excels/excel_yerbas.xlsx
+excels/yerbas_excel.xlsx
+excels/yerbas.xlsx
+front/__pycache__/iu_ctk.cpython-313.pyc
+main.spec

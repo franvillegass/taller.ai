@@ -105,7 +105,7 @@ class MenuFrame(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self,
-            text="generador de documentos con IA",
+            text="generador de documentos con IA (actualmente usando llama-3.3-70b-versatile)",
             font=ctk.CTkFont(size=14),
             text_color=COLORS["text_dim"]
         ).pack(pady=(0, 60))
