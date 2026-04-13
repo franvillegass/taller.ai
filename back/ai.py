@@ -100,3 +100,23 @@ def interpretar_fin(respuesta_usuario):
         max_tokens=15
     )
     return completion.choices[0].message.content.strip().lower()
+
+def analizar_datos_web(prompt_mejorado, datos_web, tipo_str):
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": f"""
+You are analyzing web search results to extract reliable information for generating a {tipo_str}.
+Think step by step:
+1. What information from the search results is reliable and specific?
+2. What is missing or unclear?
+3. What should NOT be included because it's uncertain or contradictory?
+Summarize only the verified, concrete facts. Be brief and direct.
+Keep the summary flat and simple. Do not organize by brand or category. Just list the key facts found.
+"""},
+            {"role": "user", "content": f"Prompt: {prompt_mejorado}\n\nSearch results:\n{datos_web}"}
+        ],
+        temperature=0,
+        max_tokens=200
+    )
+    return completion.choices[0].message.content

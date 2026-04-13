@@ -3,6 +3,7 @@ import threading
 import json
 import os
 from datetime import datetime
+from back.ai import analizar_datos_web
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -290,6 +291,15 @@ class ChatFrame(ctk.CTkFrame):
             contenido = generacion_json(
                 f"{prompt_mejorado}\n\nReal data found:\n{datos_web}",
                 instrucciones
+            )
+
+            self._agregar_burbuja("Analizando datos encontrados...")
+            datos_analizados = analizar_datos_web(prompt_mejorado, datos_web, "Excel" if self.seleccion == "1" else "Word")
+
+            instrucciones = instrucciones_excel if self.seleccion == "1" else instrucciones_word
+            contenido = generacion_json(
+            f"{prompt_mejorado}\n\nVerified real data:\n{datos_analizados}",
+            instrucciones
             )
 
             data = parsear_json(contenido)
