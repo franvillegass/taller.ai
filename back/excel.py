@@ -32,6 +32,10 @@ def formatear_excel(path, estilo):
         for cell in row:
             cell.border = border
 
+    wb.save(path)
+
+            
+
 
 def aplicar_formulas(ws):
     headers = [cell.value for cell in ws[1]]

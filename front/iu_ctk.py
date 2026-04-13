@@ -298,7 +298,8 @@ class ChatFrame(ctk.CTkFrame):
 
             if self.seleccion == "1":
                 os.makedirs("excels", exist_ok=True)
-                path = f"excels/{nombre}.xlsx"
+                path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "excels", nombre + ".xlsx")
+                path = os.path.normpath(path)
                 df = pd.DataFrame(self.ultimo_json["datos"], columns=self.ultimo_json["columnas"])
                 df.to_excel(path, index=False)
                 estilo = self.ultimo_json.get("estilo", {})
@@ -308,18 +309,39 @@ class ChatFrame(ctk.CTkFrame):
                 wb.save(path)
             else:
                 os.makedirs("words", exist_ok=True)
-                path = f"words/{nombre}.docx"
+                path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "words", nombre + ".docx")
+                path = os.path.normpath(path)
                 generar_word(self.ultimo_json, path)
 
             agregar_a_biblioteca(nombre, self.tipo, path)
             self._agregar_burbuja(f"Archivo guardado en {path} ✓")
+            self._agregar_boton_abrir(path)
             self._agregar_burbuja("¿Querés modificar algo? Describí los cambios o escribí 'no' para terminar.")
+
+
             self.estado = "editando"
             self._set_input(True)
 
         except Exception as e:
             self._agregar_burbuja(f"Error al guardar: {str(e)}")
             self._set_input(True)
+
+    def _agregar_boton_abrir(self, path):
+        wrapper = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
+        wrapper.pack(fill="x", pady=4, padx=12)
+    
+        ctk.CTkButton(
+            wrapper,
+            text="📂  Abrilo acá",
+            width=160, height=36,
+            fg_color=COLORS["accent"],
+            hover_color=COLORS["accent_dim"],
+            text_color="#000000",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            corner_radius=8,
+            command=lambda: os.startfile(path) if os.path.exists(path) else None
+        ).pack(anchor="w")
+        self.after(50, lambda: self.chat_scroll._parent_canvas.yview_moveto(1.0))
 
     def _editar(self, pedido):
         if pedido.lower() in ["no", "no gracias", "listo", "nada"]:
@@ -363,6 +385,9 @@ class ChatFrame(ctk.CTkFrame):
                     wb = load_workbook(path)
                     aplicar_formulas(wb.active)
                     wb.save(path)
+                    estilo = data.get("estilo", {})
+                    print("ESTILO APLICADO:", estilo)
+                    formatear_excel(path, estilo)
                 else:
                     generar_word(data, path)
 

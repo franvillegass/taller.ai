@@ -85,4 +85,6 @@ def editar_json(json_anterior, pedido_usuario, instrucciones):
         ],
         temperature=0
     )
-    return completion.choices[0].message.content
+    resultado = completion.choices[0].message.content
+    print("JSON EDITADO:", resultado)  # ← temporal
+    return resultado
