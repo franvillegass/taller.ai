@@ -278,29 +278,23 @@ class ChatFrame(ctk.CTkFrame):
 
     def _generar(self, prompt):
         try:
-            from back.ai import mejorar_prompt, buscar_datos_web, generacion_json, parsear_json
+            from back.ai import mejorar_prompt, buscar_datos_web, generacion_json, parsear_json, analizar_datos_web
             from back.config import instrucciones_excel, instrucciones_word
 
             self._agregar_burbuja("Mejorando tu prompt...")
             prompt_mejorado = mejorar_prompt(prompt, self.seleccion)
 
-            self._agregar_burbuja("Buscando datos en la web...")
-            datos_web = buscar_datos_web(prompt)
+            if self.seleccion == "1":
+                self._agregar_burbuja("Buscando datos en la web...")
+                datos_web = buscar_datos_web(prompt)
+                self._agregar_burbuja("Analizando datos encontrados...")
+                datos_analizados = analizar_datos_web(prompt_mejorado, datos_web, "Excel")
+                prompt_final = f"{prompt_mejorado}\n\nVerified real data:\n{datos_analizados}"
+            else:
+                prompt_final = prompt_mejorado
 
             instrucciones = instrucciones_excel if self.seleccion == "1" else instrucciones_word
-            contenido = generacion_json(
-                f"{prompt_mejorado}\n\nReal data found:\n{datos_web}",
-                instrucciones
-            )
-
-            self._agregar_burbuja("Analizando datos encontrados...")
-            datos_analizados = analizar_datos_web(prompt_mejorado, datos_web, "Excel" if self.seleccion == "1" else "Word")
-
-            instrucciones = instrucciones_excel if self.seleccion == "1" else instrucciones_word
-            contenido = generacion_json(
-            f"{prompt_mejorado}\n\nVerified real data:\n{datos_analizados}",
-            instrucciones
-            )
+            contenido = generacion_json(prompt_final, instrucciones)
 
             data = parsear_json(contenido)
             if data is None:

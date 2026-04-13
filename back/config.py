@@ -1,6 +1,6 @@
 from groq import Groq
 
-client = Groq(api_key="dont sebrou")
+client = Groq(api_key="dontsee")
 
 instrucciones_excel = """
 Respond ONLY with valid JSON.
