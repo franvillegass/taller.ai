@@ -328,7 +328,7 @@ class ChatFrame(ctk.CTkFrame):
             guardar_json_documento(path, self.ultimo_json)
             self.ultimo_path = path
 
-            self._agregar_burbuja(f"Archivo guardado ✓")
+            self._agregar_burbuja(f"Archivo guardado ✓ (NOTA: hola soy fran no la ia, porfa porfa porfa revisa los contenidos que genere, el modulo de busqueda tiene una ia que AVECES esta medio gaga, gracias)")
             self._agregar_boton_abrir(path)
             self._agregar_burbuja("¿Querés modificar algo? Describí los cambios o escribí 'no' para terminar.")
             self.estado = "editando"
@@ -339,10 +339,15 @@ class ChatFrame(ctk.CTkFrame):
             self._set_input(True)
 
     def _editar(self, pedido):
-        if pedido.lower() in ["no", "no gracias", "listo", "nada"]:
+        from back.ai import interpretar_fin
+    
+        intencion = interpretar_fin(pedido)
+        if intencion == "no":
             self._agregar_burbuja("Perfecto. Podés volver al menú cuando quieras.")
             self._set_input(True)
             return
+    
+    # ... resto del método igual
 
         try:
             from back.ai import editar_json, parsear_json

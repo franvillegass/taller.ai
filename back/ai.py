@@ -88,3 +88,15 @@ def editar_json(json_anterior, pedido_usuario, instrucciones):
     resultado = completion.choices[0].message.content
     print("JSON EDITADO:", resultado)  # ← temporal
     return resultado
+
+def interpretar_fin(respuesta_usuario):
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": "The user was asked if they want to modify a document. Based on their response, return ONLY 'si' if they want to make changes, or 'no' if they are done. Nothing else."},
+            {"role": "user", "content": respuesta_usuario}
+        ],
+        temperature=0,
+        max_tokens=15
+    )
+    return completion.choices[0].message.content.strip().lower()
