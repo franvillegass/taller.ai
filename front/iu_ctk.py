@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime
 from back.ai import analizar_datos_web
+from back.mail import enviar_mail
+import re
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -334,6 +336,7 @@ class ChatFrame(ctk.CTkFrame):
 
             self._agregar_burbuja(f"Archivo guardado ✓ (NOTA: hola soy fran no la ia, porfa porfa porfa revisa los contenidos que genere, el modulo de busqueda tiene una ia que AVECES esta medio gaga, gracias)")
             self._agregar_boton_abrir(path)
+            self._agregar_burbuja("si queres podes ir a la biblioteca y te mando esto por mail :D")
             self._agregar_burbuja("¿Querés modificar algo? Describí los cambios o escribí 'no' para terminar.")
             self.estado = "editando"
             self._set_input(True)
@@ -494,6 +497,16 @@ class BibliotecaFrame(ctk.CTkFrame):
             corner_radius=6,
             command=lambda p=entry["path"]: os.startfile(p) if os.path.exists(p) else None
         ).pack(side="right", padx=(0, 6), pady=12)
+        # Botón mail
+        ctk.CTkButton(
+            row, text="✉ Mail",
+            width=80, height=30,
+            fg_color=COLORS["surface2"], hover_color=COLORS["accent"],
+            text_color=COLORS["text"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+            corner_radius=6,
+            command=lambda e=entry: self._abrir_mail_popup(e)
+        ).pack(side="right", padx=(0, 6), pady=12)
 
     def _borrar(self, entry, row):
         if os.path.exists(entry["path"]):
@@ -513,6 +526,57 @@ class BibliotecaFrame(ctk.CTkFrame):
             path_inicial=entry["path"]
         )
 
+    #pop up mail usuario
+    def _abrir_mail_popup(self, entry):
+        top = ctk.CTkToplevel(self)
+        top.title("Enviar archivo")
+        top.geometry("350x160")
+
+        ctk.CTkLabel(
+            top,
+            text="Ingresa tu mail para recibir tu archivo",
+            text_color=COLORS["text"]
+        ).pack(pady=(15, 5))
+
+        entry_mail = ctk.CTkEntry(
+            top,
+            width=250,
+            fg_color=COLORS["surface2"],
+            text_color=COLORS["text"]
+        )
+        entry_mail.pack(pady=5)
+
+        error_label = ctk.CTkLabel(
+            top,
+            text="",
+            text_color=COLORS["error"]
+        )
+        error_label.pack()
+
+        def validar_email(mail):
+            return re.match(r"^[^@]+@[^@]+\.[^@]+$", mail)
+
+        def enviar():
+            mail = entry_mail.get().strip()
+            archivo = entry["path"]
+
+            if not validar_email(mail):
+                error_label.configure(text="Mail inválido")
+                return
+
+            try:
+                enviar_mail(mail, archivo)
+                top.destroy()
+            except Exception as e:
+                error_label.configure(text="Error al enviar")
+
+        ctk.CTkButton(
+            top,
+            text="Enviar",
+            fg_color=COLORS["accent"],
+            text_color="#000000",
+            command=enviar
+        ).pack(pady=10)
 
 if __name__ == "__main__":
     app = App()
