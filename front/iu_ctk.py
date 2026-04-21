@@ -71,7 +71,7 @@ def cargar_json_documento(path_archivo):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("taller.ai")
+        self.title("ia taller")
         self.geometry("800x600")
         self.minsize(700, 500)
         self.configure(fg_color=COLORS["bg"])
@@ -100,14 +100,14 @@ class MenuFrame(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self,
-            text="taller.ai",
+            text="ia talleer",
             font=ctk.CTkFont(family="Courier New", size=48, weight="bold"),
             text_color=COLORS["accent"]
         ).pack(pady=(80, 8))
 
         ctk.CTkLabel(
             self,
-            text="generador de documentos con IA (actualmente usando llama-3.3-70b-versatile)",
+            text="generador de documentos con IA (actualmente usando el modelo llama-3.3-70b-versatile)",
             font=ctk.CTkFont(size=14),
             text_color=COLORS["text_dim"]
         ).pack(pady=(0, 60))
