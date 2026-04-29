@@ -71,7 +71,7 @@ def cargar_json_documento(path_archivo):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("ia taller")
+        self.title("docs ")
         self.geometry("800x600")
         self.minsize(700, 500)
         self.configure(fg_color=COLORS["bg"])
@@ -100,14 +100,14 @@ class MenuFrame(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self,
-            text="ia talleer",
+            text="ia documents",
             font=ctk.CTkFont(family="Courier New", size=48, weight="bold"),
             text_color=COLORS["accent"]
         ).pack(pady=(80, 8))
 
         ctk.CTkLabel(
             self,
-            text="generador de documentos con IA (actualmente usando el modelo llama-3.3-70b-versatile)",
+            text="documents generator whit ai (now using llama-3.3-70b-versatile)",
             font=ctk.CTkFont(size=14),
             text_color=COLORS["text_dim"]
         ).pack(pady=(0, 60))
@@ -334,9 +334,9 @@ class ChatFrame(ctk.CTkFrame):
             guardar_json_documento(path, self.ultimo_json)
             self.ultimo_path = path
 
-            self._agregar_burbuja(f"Archivo guardado ✓ (NOTA: hola soy fran no la ia, porfa porfa porfa revisa los contenidos que genere, el modulo de busqueda tiene una ia que AVECES esta medio gaga, gracias)")
+            self._agregar_burbuja(f"Archivo guardado ✓ (NOTE: please check before use it, can be wrong)")
             self._agregar_boton_abrir(path)
-            self._agregar_burbuja("si queres podes ir a la biblioteca y te mando esto por mail :D")
+            self._agregar_burbuja("you can get it via mail in the section biblioteca")
             self._agregar_burbuja("¿Querés modificar algo? Describí los cambios o escribí 'no' para terminar.")
             self.estado = "editando"
             self._set_input(True)
